@@ -10,7 +10,8 @@ version = '0.2.0'
 
 install_requires = [
     'urllib3==1.7',
-    'pyOpenSSL==0.13.1'
+    'pyOpenSSL==0.13.1',
+    'mox'
 ]
 
 
