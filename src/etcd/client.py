@@ -11,6 +11,7 @@ import json
 import ssl
 
 import etcd
+import logging
 
 
 class Client(object):
@@ -131,7 +132,7 @@ class Client(object):
         return [
             node.strip() for node in self.api_execute(
                 self.version_prefix + '/machines',
-                self._MGET).split(',')
+                self._MGET).data.split(',')
         ]
 
     @property
@@ -145,7 +146,7 @@ class Client(object):
         """
         return self.api_execute(
             self.version_prefix + '/leader',
-            self._MGET)
+            self._MGET).data
 
     @property
     def key_endpoint(self):
@@ -382,12 +383,12 @@ class Client(object):
     def _result_from_response(self, response):
         """ Creates an EtcdResult from json dictionary """
         try:
-            res = json.loads(response)
-            if isinstance(res, list):
-                return [etcd.EtcdResult(**v) for v in res]
+            res = json.loads(response.data)
+            if response.status == 201:
+                res['newKey'] = True
             return etcd.EtcdResult(**res)
         except Exception, e:
-            raise etcd.EtcdException('Unable to decode server response: %s', e)
+            raise etcd.EtcdException('Unable to decode server response: %s' % e)
 
     def api_execute(self, path, method, params=None):
         """ Executes the query. """
@@ -408,12 +409,8 @@ class Client(object):
                 encode_multipart=False,
                 redirect=self.allow_redirect)
 
-        if response.status == 200:
-            return response.data
-        elif response.status == 201:
-            #we still need to know this from the response, I guess
-            response.data['newKey'] = True
-            return response.data
+        if response.status in [200,201]:
+            return response
         else:
             #throw the appropriate exception
             etcd.EtcdError.handle(**json.loads(response.data))
