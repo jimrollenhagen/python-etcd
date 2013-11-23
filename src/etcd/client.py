@@ -387,7 +387,7 @@ class Client(object):
                 return [etcd.EtcdResult(**v) for v in res]
             return etcd.EtcdResult(**res)
         except Exception, e:
-            raise etcd.EtcdException('Unable to decode server response')
+            raise etcd.EtcdException('Unable to decode server response: %s', e)
 
     def api_execute(self, path, method, params=None):
         """ Executes the query. """
@@ -408,7 +408,11 @@ class Client(object):
                 encode_multipart=False,
                 redirect=self.allow_redirect)
 
-        if response.status in [200,201] :
+        if response.status == 200:
+            return response.data
+        elif response.status == 201:
+            #we still need to know this from the response, I guess
+            response.data['newKey'] = True
             return response.data
         else:
             #throw the appropriate exception
